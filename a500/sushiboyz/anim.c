@@ -190,7 +190,7 @@ static __regargs void DrawObject(Object3D *object, APTR start) {
       WORD dmax = x1 - x0;
       WORD dmin = y1 - y0;
       WORD derr;
-      UWORD bltcon1 = LINE_SOLID;
+      UWORD bltcon1 = LINEMODE;
 
       if (dmax < 0)
         dmax = -dmax;
@@ -212,7 +212,7 @@ static __regargs void DrawObject(Object3D *object, APTR start) {
       bltcon1 |= rorw(x0 & 15, 4);
 
       {
-        UWORD bltcon0 = rorw(x0 & 15, 4) | LINE_OR;
+        UWORD bltcon0 = rorw(x0 & 15, 4) | BC0F_LINE_OR;
         UWORD bltamod = derr - dmax;
         UWORD bltbmod = 2 * dmin;
         UWORD bltsize = (dmax << 6) + 66;
