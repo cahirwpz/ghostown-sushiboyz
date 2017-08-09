@@ -11,11 +11,8 @@
 #include "sushiboyz.h"
 
 STRPTR __cwdpath = "nigiri";
-
-int __nocommandline = 1;
-ULONG __oslibversion = 33;
-
-extern void CallHRTmon();
+LONG __chipmem = 450 * 1024;
+LONG __fastmem = 380 * 1024;
 
 static WORD kickVer;
 static struct List PortsIntChain;
@@ -23,48 +20,6 @@ static struct List CoperIntChain;
 static struct List VertbIntChain;
 static struct List TaskReady;
 static struct List TaskWait;
-
-
-void KillTrapHandler() {
-  struct Task *tc = FindTask(NULL);
-  tc->tc_TrapCode = NULL;
-}
-
-ADD2INIT(InitTrapHandler, -100);
-ADD2EXIT(KillTrapHandler, -100);
-
-void SystemInfo() {
-  WORD kickRev;
-  WORD cpu = 0;
-
-  if (SysBase->AttnFlags & AFF_68060)
-    cpu = 6;
-  else if (SysBase->AttnFlags & AFF_68040)
-    cpu = 4;
-  else if (SysBase->AttnFlags & AFF_68030)
-    cpu = 3;
-  else if (SysBase->AttnFlags & AFF_68020)
-    cpu = 2;
-  else if (SysBase->AttnFlags & AFF_68010)
-    cpu = 1;
-
-  /* Based on WhichAmiga method. */
-  {
-    APTR kickEnd = (APTR)0x1000000;
-    ULONG kickSize = *(ULONG *)(kickEnd - 0x14);
-    UWORD *kick = kickEnd - kickSize;
-
-    kickVer = kick[6];
-    kickRev = kick[7];
-  }
-
-  Log("[Main] ROM: %ld.%ld, CPU: 680%ld0, CHIP: %ldkB, FAST: %ldkB\n",
-      (LONG)kickVer, (LONG)kickRev, (LONG)cpu,
-      (LONG)(AvailMem(MEMF_CHIP | MEMF_LARGEST) / 1024),
-      (LONG)(AvailMem(MEMF_FAST | MEMF_LARGEST) / 1024));
-}
-
-ADD2INIT(SystemInfo, -50);
 
 static struct View *oldView;
 static UWORD oldDmacon, oldIntena, oldAdkcon;
@@ -186,3 +141,72 @@ void RestoreOS() {
 
 ADD2INIT(KillOS, -15);
 ADD2EXIT(RestoreOS, -15);
+
+void SystemInfo() {
+  WORD kickRev;
+  WORD cpu = 0;
+
+  if (SysBase->AttnFlags & AFF_68060)
+    cpu = 6;
+  else if (SysBase->AttnFlags & AFF_68040)
+    cpu = 4;
+  else if (SysBase->AttnFlags & AFF_68030)
+    cpu = 3;
+  else if (SysBase->AttnFlags & AFF_68020)
+    cpu = 2;
+  else if (SysBase->AttnFlags & AFF_68010)
+    cpu = 1;
+
+  /* Based on WhichAmiga method. */
+  {
+    APTR kickEnd = (APTR)0x1000000;
+    ULONG kickSize = *(ULONG *)(kickEnd - 0x14);
+    UWORD *kick = kickEnd - kickSize;
+
+    kickVer = kick[6];
+    kickRev = kick[7];
+  }
+
+  Log("[Main] ROM: %ld.%ld, CPU: 680%ld0, CHIP: %ldkB, FAST: %ldkB\n",
+      (LONG)kickVer, (LONG)kickRev, (LONG)cpu,
+      (LONG)(AvailMem(MEMF_CHIP | MEMF_LARGEST) / 1024),
+      (LONG)(AvailMem(MEMF_FAST | MEMF_LARGEST) / 1024));
+}
+
+ADD2INIT(SystemInfo, -50);
+
+typedef struct LibDesc {
+  struct Library *base;
+  char *name;
+} LibDescT;
+
+extern LibDescT *__LIB_LIST__[];
+
+#define OSLIBVERSION 33
+
+void InitLibraries() {
+  LibDescT **list = __LIB_LIST__;
+  ULONG numbases = (ULONG)*list++;
+
+  while (numbases-- > 0) {
+    LibDescT *lib = *list++;
+    if (!(lib->base = OpenLibrary(lib->name, OSLIBVERSION))) {
+      Log("Cannot open '%s'!\n", lib->name);
+      exit(20);
+    }
+  }
+}
+
+void KillLibraries() {
+  LibDescT **list = __LIB_LIST__;
+  ULONG numbases = (ULONG)*list++;
+
+  while (numbases-- > 0) {
+    LibDescT *lib = *list++;
+    if (lib->base)
+      CloseLibrary(lib->base);
+  }
+}
+
+ADD2INIT(InitLibraries, -120);
+ADD2EXIT(KillLibraries, -120);
