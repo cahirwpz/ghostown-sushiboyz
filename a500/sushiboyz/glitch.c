@@ -39,7 +39,7 @@ static void Init() {
   InitSharedBitmap(window0, WIDTH, HEIGHT, DEPTH, screen0);
   InitSharedBitmap(window1, WIDTH, HEIGHT, DEPTH, screen1);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER | DMAF_BLITHOG;
+  EnableDMA(DMAF_BLITTER | DMAF_BLITHOG);
 
   BitmapClear(window0);
   BitmapClear(window1);
@@ -64,11 +64,11 @@ static void Init() {
   CopEnd(cp);
 
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
+  EnableDMA(DMAF_RASTER);
 }
 
 static void Kill() {
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_BLITHOG;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_BLITHOG);
 
   DeleteCopList(cp);
 }

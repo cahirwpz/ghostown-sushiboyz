@@ -73,7 +73,7 @@ static void Init() {
   window->depth++;
   window->planes[DEPTH] = screen1->planes[0];
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER;
+  EnableDMA(DMAF_BLITTER);
   BitmapClear(window);
 
   ball = NewObject3D(mesh);
@@ -87,11 +87,11 @@ static void Init() {
   CopEnd(cp);
 
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
+  EnableDMA(DMAF_RASTER);
 }
 
 static void Kill() {
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER);
 
   DeleteObject3D(ball);
   DeleteCopList(cp);

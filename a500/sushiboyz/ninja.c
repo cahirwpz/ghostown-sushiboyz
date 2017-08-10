@@ -93,7 +93,7 @@ static __interrupt LONG RunEachFrame() {
   return 0;
 }
 
-INTERRUPT(FrameInterrupt, 0, RunEachFrame);
+INTERRUPT(FrameInterrupt, 0, RunEachFrame, NULL);
 
 static void Init() {
   static BitmapT recycled0, recycled1;
@@ -104,7 +104,7 @@ static void Init() {
   InitSharedBitmap(window0, WIDTH, HEIGHT, DEPTH, screen0);
   InitSharedBitmap(window1, WIDTH, HEIGHT, DEPTH, screen1);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER;
+  EnableDMA(DMAF_BLITTER);
 
   BitmapClear(window0);
   BitmapClear(window1);
@@ -120,15 +120,15 @@ static void Init() {
   CopEnd(cp);
 
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
+  EnableDMA(DMAF_RASTER);
 
-  AddIntServer(INTB_VERTB, &FrameInterrupt);
+  AddIntServer(INTB_VERTB, FrameInterrupt);
 }
 
 static void Kill() {
-  RemIntServer(INTB_VERTB, &FrameInterrupt);
+  RemIntServer(INTB_VERTB, FrameInterrupt);
 
-  custom->dmacon = DMAF_RASTER;
+  DisableDMA(DMAF_RASTER);
 
   DeleteCopList(cp);
 }

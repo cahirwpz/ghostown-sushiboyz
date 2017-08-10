@@ -70,7 +70,7 @@ static __interrupt LONG RunEachFrame() {
   return 0;
 }
 
-INTERRUPT(FrameInterrupt, 0, RunEachFrame);
+INTERRUPT(FrameInterrupt, 0, RunEachFrame, NULL);
 
 static void UnLoad() {
   DeletePalette(bamboo->palette);
@@ -121,15 +121,16 @@ static void Init() {
   cp = NewCopList(80);
   MakeCopperList(cp);
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER | DMAF_RASTER | DMAF_SPRITE | DMAF_BLITHOG;
+  EnableDMA(DMAF_BLITTER | DMAF_RASTER | DMAF_SPRITE | DMAF_BLITHOG);
 
-  AddIntServer(INTB_VERTB, &FrameInterrupt);
+  AddIntServer(INTB_VERTB, FrameInterrupt);
 }
 
 static void Kill() {
-  RemIntServer(INTB_VERTB, &FrameInterrupt);
+  RemIntServer(INTB_VERTB, FrameInterrupt);
 
-  custom->dmacon = DMAF_COPPER | DMAF_BLITTER | DMAF_RASTER | DMAF_SPRITE | DMAF_BLITHOG;
+  DisableDMA(DMAF_COPPER | DMAF_BLITTER | DMAF_RASTER | DMAF_SPRITE |
+             DMAF_BLITHOG);
 
   DeleteCopList(cp);
   DeleteSprite(sprite[0]);

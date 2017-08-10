@@ -25,6 +25,13 @@ static struct View *oldView;
 static UWORD oldDmacon, oldIntena, oldAdkcon;
 static ULONG oldCacheBits = 0;
 
+static struct Task *idleTask = NULL;
+
+static void IdleTask() {
+  Log("[Init] Idle task %lx started!\n", (LONG)FindTask(NULL));
+  for (;;) {}
+}
+
 void KillOS() {
   Log("[Startup] Save AmigaOS state.\n");
 
@@ -89,10 +96,14 @@ void KillOS() {
 
   /* Restore multitasking. */
   Permit();
+
+  idleTask = CreateTask("Idle Task", -10, IdleTask, 4096);
 }
 
 void RestoreOS() {
   Log("[Startup] Restore AmigaOS state.\n");
+
+  RemTask(idleTask);
 
   /* Suspend multitasking. */
   Forbid();
@@ -139,8 +150,8 @@ void RestoreOS() {
   DisownBlitter();
 }
 
-ADD2INIT(KillOS, -15);
-ADD2EXIT(RestoreOS, -15);
+ADD2INIT(KillOS, -50);
+ADD2EXIT(RestoreOS, -50);
 
 void SystemInfo() {
   WORD kickRev;
@@ -173,7 +184,7 @@ void SystemInfo() {
       (LONG)(AvailMem(MEMF_FAST | MEMF_LARGEST) / 1024));
 }
 
-ADD2INIT(SystemInfo, -50);
+ADD2INIT(SystemInfo, -100);
 
 typedef struct LibDesc {
   struct Library *base;

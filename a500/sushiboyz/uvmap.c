@@ -258,8 +258,8 @@ static __interrupt LONG FadeInFadeOut() {
   return 0;
 }
 
-INTERRUPT(FadeInFadeOutInterrupt, 0, FadeInFadeOut);
-INTERRUPT(ChunkyToPlanarInterrupt, 0, ChunkyToPlanar);
+INTERRUPT(FadeInFadeOutInterrupt, 0, FadeInFadeOut, NULL);
+INTERRUPT(ChunkyToPlanarInterrupt, 0, ChunkyToPlanar, NULL);
 
 static struct Interrupt *oldBlitInt;
 
@@ -303,20 +303,21 @@ static void Init() {
   MakeCopperList(cp);
   CopListActivate(cp);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER | DMAF_BLITTER | DMAF_SPRITE;
-  custom->intreq = INTF_BLIT;
-  custom->intena = INTF_SETCLR | INTF_BLIT;
+  EnableDMA(DMAF_SETCLR | DMAF_RASTER | DMAF_BLITTER | DMAF_SPRITE);
 
-  oldBlitInt = SetIntVector(INTB_BLIT, &ChunkyToPlanarInterrupt);
-  AddIntServer(INTB_VERTB, &FadeInFadeOutInterrupt);
+  oldBlitInt = SetIntVector(INTB_BLIT, ChunkyToPlanarInterrupt);
+  ClearIRQ(INTF_BLIT);
+  EnableINT(INTF_BLIT);
+
+  AddIntServer(INTB_VERTB, FadeInFadeOutInterrupt);
 }
 
 static void Kill() {
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_SPRITE;
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_SPRITE);
 
-  custom->intena = INTF_BLIT;
-  RemIntServer(INTB_VERTB, &FadeInFadeOutInterrupt);
+  RemIntServer(INTB_VERTB, FadeInFadeOutInterrupt);
+
+  DisableINT(INTF_BLIT);
   SetIntVector(INTB_BLIT, oldBlitInt);
 
   DeleteCopList(cp);

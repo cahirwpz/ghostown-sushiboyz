@@ -37,7 +37,7 @@ static __interrupt LONG RunEachFrame() {
   return 0;
 }
 
-INTERRUPT(FrameInterrupt, 0, RunEachFrame);
+INTERRUPT(FrameInterrupt, 0, RunEachFrame, NULL);
 
 static void Init() {
   WORD w = bitmap->width;
@@ -53,15 +53,15 @@ static void Init() {
   CopEnd(cp);
 
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
+  EnableDMA(DMAF_RASTER);
 
-  AddIntServer(INTB_VERTB, &FrameInterrupt);
+  AddIntServer(INTB_VERTB, FrameInterrupt);
 }
 
 static void Kill() {
-  RemIntServer(INTB_VERTB, &FrameInterrupt);
+  RemIntServer(INTB_VERTB, FrameInterrupt);
 
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER);
   DeleteCopList(cp);
 }
 

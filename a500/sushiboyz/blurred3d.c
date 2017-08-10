@@ -114,7 +114,7 @@ static __interrupt LONG RunEachFrame() {
   return 0;
 }
 
-INTERRUPT(FrameInterrupt, 0, RunEachFrame);
+INTERRUPT(FrameInterrupt, 0, RunEachFrame, NULL);
 
 static void Init() {
   static BitmapT recycled0, recycled1;
@@ -134,7 +134,7 @@ static void Init() {
   sprite[0] = NewSpriteFromBitmap(clipart->height, clipart, 0, 0);
   sprite[1] = NewSpriteFromBitmap(clipart->height, clipart, 16, 0);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER; // | DMAF_BLITHOG;
+  EnableDMA(DMAF_BLITTER /* | DMAF_BLITHOG */);
 
   BitmapClear(window0);
   BitmapClear(window1);
@@ -142,15 +142,16 @@ static void Init() {
   cp = NewCopList(100 + gradient->height * (gradient->width + 1));
   MakeCopperList(cp);
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER | DMAF_SPRITE;
+  EnableDMA(DMAF_RASTER | DMAF_SPRITE);
 
-  AddIntServer(INTB_VERTB, &FrameInterrupt);
+  AddIntServer(INTB_VERTB, FrameInterrupt);
 }
 
 static void Kill() {
-  RemIntServer(INTB_VERTB, &FrameInterrupt);
+  RemIntServer(INTB_VERTB, FrameInterrupt);
 
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_SPRITE | DMAF_BLITTER; // | DMAF_BLITHOG;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_SPRITE | DMAF_BLITTER
+             /* | DMAF_BLITHOG */);
 
   DeleteCopList(cp);
   DeleteSprite(sprite[0]);

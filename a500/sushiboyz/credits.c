@@ -294,12 +294,12 @@ static __interrupt LONG RunEachFrame() {
   return 0;
 }
 
-INTERRUPT(FrameInterrupt, 0, RunEachFrame);
+INTERRUPT(FrameInterrupt, 0, RunEachFrame, NULL);
 
 static void Init() {
   static BitmapT recycled;
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER | DMAF_BLITHOG;
+  EnableDMA(DMAF_BLITTER | DMAF_BLITHOG);
 
   lower = &recycled;
 
@@ -323,15 +323,16 @@ static void Init() {
   cp1 = NewCopList(300);
   MakeCopperList(cp0, 0);
   CopListActivate(cp0);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER | DMAF_SPRITE;
+  EnableDMA(DMAF_RASTER | DMAF_SPRITE);
 
-  AddIntServer(INTB_VERTB, &FrameInterrupt);
+  AddIntServer(INTB_VERTB, FrameInterrupt);
 }
 
 static void Kill() {
-  RemIntServer(INTB_VERTB, &FrameInterrupt);
+  RemIntServer(INTB_VERTB, FrameInterrupt);
 
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_SPRITE | DMAF_BLITHOG;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_SPRITE |
+             DMAF_BLITHOG);
 
   DeletePalette(rotatedPal);
   DeleteCopList(cp0);

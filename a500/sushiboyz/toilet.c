@@ -67,7 +67,7 @@ static __interrupt LONG RunEachFrame() {
   return 0;
 }
 
-INTERRUPT(FrameInterrupt, 0, RunEachFrame);
+INTERRUPT(FrameInterrupt, 0, RunEachFrame, NULL);
 
 static void Init() {
   CopInsT *sprptr[8];
@@ -86,15 +86,15 @@ static void Init() {
   CopInsSet32(sprptr[3], sprite[1]->attached->data);
 
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER | DMAF_SPRITE;
+  EnableDMA(DMAF_RASTER | DMAF_SPRITE);
 
-  AddIntServer(INTB_VERTB, &FrameInterrupt);
+  AddIntServer(INTB_VERTB, FrameInterrupt);
 }
 
 static void Kill() {
-  RemIntServer(INTB_VERTB, &FrameInterrupt);
+  RemIntServer(INTB_VERTB, FrameInterrupt);
 
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_SPRITE;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_SPRITE);
   DeleteCopList(cp);
 }
 

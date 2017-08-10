@@ -148,11 +148,11 @@ static void Init() {
   frame1 = NewFrame();
 
   CopListActivate(frame1->cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
+  EnableDMA(DMAF_RASTER);
 }
 
 static void Kill() {
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER);
 
   DeleteFrame(frame0);
   DeleteFrame(frame1);

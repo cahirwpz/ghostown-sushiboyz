@@ -56,6 +56,7 @@ static TimeSlotT timeline[] = {
   _TS_END()
 };
 
+#if 0
 static TimeActionT actions[] = {
   _TA_LOAD(Ninja1),
   _TA_LOAD(Ninja2),
@@ -79,31 +80,11 @@ static TimeActionT actions[] = {
   _TA_LOAD(Glitch),
   _TA_END()
 };
+#endif
 
-INTERRUPT(P61PlayerInterrupt, 10, P61_Music);
-
-static struct Task *demoTask = NULL;
-static struct Task *workerTask = NULL;
-
-static __interrupt LONG Reschedule() {
-  SetTaskPri(demoTask, 0);
-  return 0;
-}
-
-INTERRUPT(RescheduleInterrupt, 20, Reschedule);
-
-static void WorkerTask() {
-  Log("Worker Task!\n");
-  LoadEffects(timeline, -1);
-  SetTaskPri(demoTask, 0);
-
-  for (;;);
-}
+INTERRUPT(P61PlayerInterrupt, 10, P61_Music, NULL);
 
 int main() {
-  demoTask = FindTask(NULL);
-  workerTask = CreateTask("Worker Task", -10, WorkerTask, 4096);
-
   SerialInit(9600);
 
   Log("  _.___    ___.    ______ ___     ___    ______   ____ ______\n"
@@ -132,18 +113,15 @@ int main() {
     screen0 = NewBitmap(WIDTH, HEIGHT, DEPTH);
     screen1 = NewBitmap(WIDTH, HEIGHT, DEPTH);
 
-    /* Wait for worker task to load data. */
-    SetTaskPri(demoTask, -20);
+    LoadEffects(timeline, -1);
 
     P61_Init(module, samples, NULL);
     P61_ControlBlock.Play = 1;
-    AddIntServer(INTB_VERTB, &P61PlayerInterrupt);
-    AddIntServer(INTB_VERTB, &RescheduleInterrupt);
+    AddIntServer(INTB_VERTB, P61PlayerInterrupt);
 
     RunEffects(timeline);
 
-    RemIntServer(INTB_VERTB, &RescheduleInterrupt);
-    RemIntServer(INTB_VERTB, &P61PlayerInterrupt);
+    RemIntServer(INTB_VERTB, P61PlayerInterrupt);
     P61_ControlBlock.Play = 0;
     P61_End();
 
@@ -159,7 +137,6 @@ int main() {
   }
 
   SerialKill();
-  RemTask(workerTask);
 
   return 0;
 }

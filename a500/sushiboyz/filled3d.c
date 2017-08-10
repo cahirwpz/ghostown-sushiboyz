@@ -432,7 +432,7 @@ static void Init() {
   InitSharedBitmap(window0, WIDTH, HEIGHT, DEPTH, screen0);
   InitSharedBitmap(window1, WIDTH, HEIGHT, DEPTH, screen1);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER | DMAF_BLITHOG;
+  EnableDMA(DMAF_BLITTER | DMAF_BLITHOG);
 
   BitmapClear(window0);
   BitmapClear(window1);
@@ -447,13 +447,13 @@ static void Init() {
   cp = NewCopList(80);
   MakeCopperList(cp);
   CopListActivate(cp);
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
+  EnableDMA(DMAF_RASTER);
   
   SwitchView(0);
 }
 
 static void Kill() {
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_BLITHOG;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER | DMAF_BLITHOG);
 
   DeleteBitmap(buffer);
   DeleteCopList(cp);
@@ -555,9 +555,9 @@ static void Render() {
   ModifyGeometry(cube);
   TransformVertices(cube);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
+  EnableDMA(DMAF_BLITHOG);
   DrawObject(cube, custom);
-  custom->dmacon = DMAF_BLITHOG;
+  DisableDMA(DMAF_BLITHOG);
   // PROFILE_END(filled3d);
 
   WaitVBlank();

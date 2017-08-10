@@ -274,7 +274,7 @@ static void ChunkyToPlanar() {
   custom->intreq = INTF_BLIT;
 }
 
-INTERRUPT(ChunkyToPlanarInterrupt, 0, ChunkyToPlanar);
+INTERRUPT(ChunkyToPlanarInterrupt, 0, ChunkyToPlanar, NULL);
 
 static struct Interrupt *oldBlitInt;
 
@@ -307,7 +307,7 @@ static void Init() {
   InitSharedBitmap(window0, WIDTH * 4, HEIGHT, DEPTH, screen0);
   InitSharedBitmap(window1, WIDTH * 4, HEIGHT, DEPTH, screen1);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_BLITTER;
+  EnableDMA(DMAF_BLITTER);
 
   BitmapClear(window0);
   WaitBlitter();
@@ -319,18 +319,17 @@ static void Init() {
   MakeCopperList(cp);
   CopListActivate(cp);
 
-  custom->dmacon = DMAF_SETCLR | DMAF_RASTER;
-  custom->intreq = INTF_BLIT;
-  custom->intena = INTF_SETCLR | INTF_BLIT;
+  EnableDMA(DMAF_RASTER);
 
-  oldBlitInt = SetIntVector(INTB_BLIT, &ChunkyToPlanarInterrupt);
+  oldBlitInt = SetIntVector(INTB_BLIT, ChunkyToPlanarInterrupt);
+  ClearIRQ(INTF_BLIT);
+  EnableINT(INTF_BLIT);
 }
 
 static void Kill() {
-  custom->dmacon = DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER;
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER);
 
-  custom->intena = INTF_BLIT;
-  custom->intreq = INTF_BLIT;
+  DisableINT(INTF_BLIT);
   SetIntVector(INTB_BLIT, oldBlitInt);
 
   DeleteCopList(cp);
