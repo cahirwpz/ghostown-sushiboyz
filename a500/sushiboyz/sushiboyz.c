@@ -5,9 +5,11 @@
 #include "hardware.h"
 #include "interrupts.h"
 #include "memory.h"
+#include "blitter.h"
 #include "reader.h"
 #include "color.h"
 #include "io.h"
+#include "ilbm.h"
 #include "serial.h"
 
 #include "sushiboyz.h"
@@ -82,6 +84,38 @@ static TimeActionT actions[] = {
 };
 #endif
 
+static CopListT *cp;
+
+static void BootInit() {
+  BitmapT *boot = LoadILBM("boot.iff");
+  UWORD cx = (WIDTH - boot->width) / 2;
+  UWORD cy = (HEIGHT - boot->height) / 2;
+
+  EnableDMA(DMAF_BLITTER);
+  BitmapCopyFast(screen0, cx, cy, boot);
+  BitmapCopyFast(screen1, cx, cy, boot);
+  DisableDMA(DMAF_BLITTER);
+
+  cp = NewCopList(100);
+
+  CopInit(cp);
+  CopSetupGfxSimple(cp, MODE_LORES, DEPTH, X(0), Y(0), WIDTH, HEIGHT);
+  CopSetupBitplanes(cp, NULL, screen0, DEPTH);
+  CopLoadPal(cp, boot->palette, 0);
+  CopEnd(cp);
+
+  DeletePalette(boot->palette);
+  DeleteBitmap(boot);
+
+  CopListActivate(cp);
+  EnableDMA(DMAF_RASTER);
+}
+
+static void BootKill() {
+  DisableDMA(DMAF_RASTER | DMAF_COPPER);
+  DeleteCopList(cp);
+}
+
 INTERRUPT(P61PlayerInterrupt, 10, P61_Music, NULL);
 
 int main() {
@@ -106,18 +140,22 @@ int main() {
                   (LONG)item->phase, item->effect->name);
   }
 
+  screen0 = NewBitmap(WIDTH, HEIGHT, DEPTH);
+  screen1 = NewBitmap(WIDTH, HEIGHT, DEPTH);
+
+  BootInit();
+
   if ((tracks = LoadTrackList("sushiboyz.sync"))) {
     APTR module = LoadFile("p61.jazzcat-sushiboyz", MEMF_PUBLIC);
     APTR samples = LoadFile("smp.jazzcat-sushiboyz", MEMF_CHIP);
-
-    screen0 = NewBitmap(WIDTH, HEIGHT, DEPTH);
-    screen1 = NewBitmap(WIDTH, HEIGHT, DEPTH);
 
     LoadEffects(timeline, -1);
 
     P61_Init(module, samples, NULL);
     P61_ControlBlock.Play = 1;
     AddIntServer(INTB_VERTB, P61PlayerInterrupt);
+
+    DisableDMA(DMAF_RASTER | DMAF_COPPER);
 
     RunEffects(timeline);
 
@@ -127,14 +165,16 @@ int main() {
 
     UnLoadEffects(timeline);
 
-    DeleteBitmap(screen0);
-    DeleteBitmap(screen1);
-
     MemFree(module);
     MemFree(samples);
 
     DeleteTrackList(tracks);
   }
+
+  BootKill();
+
+  DeleteBitmap(screen1);
+  DeleteBitmap(screen0);
 
   SerialKill();
 
