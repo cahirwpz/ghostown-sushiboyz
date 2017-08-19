@@ -11,7 +11,7 @@
 #include "sushiboyz.h"
 
 STRPTR __cwdpath = "nigiri";
-LONG __chipmem = 450 * 1024;
+LONG __chipmem = 460 * 1024;
 LONG __fastmem = 380 * 1024;
 
 static WORD kickVer;

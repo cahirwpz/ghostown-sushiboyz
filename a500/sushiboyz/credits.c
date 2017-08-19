@@ -256,7 +256,7 @@ static void MakeCopperList(CopListT *cp, WORD lower_x) {
 
     // Log("x: %ld\n", (LONG)lower_x);
 
-    CopWait(cp, LOGO_Y - 1, 0);
+    CopWaitSafe(cp, LOGO_Y - 1, 0);
     if (flashActive)
       CopLoadColor(cp, 0, 15, 0xfff);
     else
@@ -272,9 +272,9 @@ static void MakeCopperList(CopListT *cp, WORD lower_x) {
     CopMove16(cp, bpl2mod, 384 / 8 - 2);
     CopMove16(cp, bplcon1, (xs << 4) | xs);
 
-    CopWait(cp, LOGO_Y, 0);
+    CopWaitSafe(cp, LOGO_Y, 0);
     CopMove16(cp, dmacon, DMAF_SETCLR | DMAF_RASTER);
-    CopWait(cp, LOGO_Y + lower->height, 0);
+    CopWaitSafe(cp, LOGO_Y + lower->height, 0);
     CopMove16(cp, dmacon, DMAF_RASTER);
   }
 

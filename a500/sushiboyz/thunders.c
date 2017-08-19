@@ -392,7 +392,7 @@ static __regargs void ColorizeLowerHalf(CopListT *cp, WORD yi, WORD kyo) {
   for (k = 0; k <= SIZE; k++, yi += TILESIZE) {
     WORD column = ((k + kyo) & (SIZE - 1));
     UWORD *colors = pixels + (column * SIZE + 1) * sizeof(UWORD);
-    CopWait(cp, Y(y0), 0);
+    CopWaitSafe(cp, Y(y0), 0);
     CopSetRGB(cp, 1, *colors++);
     CopSetRGB(cp, 2, *colors++);
     CopSetRGB(cp, 3, *colors++);
@@ -411,7 +411,7 @@ static __regargs void ColorizeLowerHalf(CopListT *cp, WORD yi, WORD kyo) {
         yj = 0;
       y1 = horiz[yj];
 
-      CopWait(cp, Y(y1), 0);
+      CopWaitSafe(cp, Y(y1), 0);
       CopSetRGB(cp, 1, BGCOL);
       CopSetRGB(cp, 2, BGCOL);
       CopSetRGB(cp, 3, BGCOL);

@@ -273,7 +273,7 @@ static void MakeCopperList(CopListT *cp) {
   CopSetupSprites(cp, sprptr);
   pal = CopLoadColor(cp, 0, 31, 0);
   for (i = 0; i < HEIGHT * 2; i++) {
-    CopWait(cp, Y(i + 28), 0);
+    CopWaitSafe(cp, Y(i + 28), 0);
     /* Line doubling. */
     CopMove16(cp, bpl1mod, (i & 1) ? 0 : -40);
     CopMove16(cp, bpl2mod, (i & 1) ? 0 : -40);

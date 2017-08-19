@@ -119,7 +119,7 @@ static FrameT *NewFrame() {
     CopMove16(cp, diwstop, 0x2bc1);
 
     for (i = 0, k = 0; i < HEIGHT; i++) {
-      CopWait(cp, Y(i), 0);
+      CopWaitSafe(cp, Y(i), 0);
       frame->bplmod[i] = CopMove16(cp, bpl1mod, -32);
       CopMove16(cp, bpl2mod, -32);
       CopMove16(cp, bpldat[0], 0);
