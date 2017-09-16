@@ -3,6 +3,7 @@ TOPDIR := $(realpath ..)
 SUBDIRS := \
 	anim \
 	ball \
+	bobs3d \
 	blurred \
 	blurred3d \
 	bumpmap-rgb \
@@ -19,6 +20,7 @@ SUBDIRS := \
 	metaballs \
 	neons \
 	plasma \
+	playahx \
 	playp61 \
 	plotter \
 	prisms \
@@ -36,7 +38,6 @@ SUBDIRS := \
 	wireframe
 
 FAILURES := \
-	playahx \
 	tests \
 	vscaler
 		

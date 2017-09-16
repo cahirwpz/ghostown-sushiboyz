@@ -14,12 +14,17 @@ include $(TOPDIR)/build.mk
 
 %.3d: %.lwo
 	@echo "[$(DIR):conv] $< -> $@"
-	$(DUMPLWO) $< $@
+	$(DUMPLWO) -f $< $@
 
 %.ilbm: %.png
 	@echo "[$(DIR):conv] $< -> $@"
 	$(ILBMCONV) $< $@
 	$(ILBMPACK) -f $@
+
+%.png: %.psfu
+	@echo "[$(DIR):conv] $< -> $@"
+	$(PSFTOPNG) $<
+	$(OPTIPNG) $@
 
 %.bin: %.asm
 	@echo "[$(DIR):bin] $< -> $@"

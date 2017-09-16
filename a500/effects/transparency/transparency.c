@@ -6,6 +6,7 @@
 #include "blitter.h"
 #include "ilbm.h"
 #include "fx.h"
+#include "tasks.h"
 
 STRPTR __cwdpath = "data";
 
@@ -24,7 +25,7 @@ static UWORD pal2[4];
 
 static void Load() {
   background = LoadILBM("transparency-bg.ilbm");
-  logo = LoadILBM("ghostown_160x128_4col.iff");
+  logo = LoadILBM("ghostown-logo.ilbm");
 
   {
     WORD i;
@@ -113,6 +114,8 @@ static void Render() {
   
   for (i = 0; i < 24; i++)
     CopInsSet16(pal + i, ColorTransition(pal1[i & 7], pal2[i / 8 + 1], s));
+
+  TaskWait(VBlankEvent);
 }
 
 EffectT Effect = { Load, UnLoad, Init, Kill, Render };

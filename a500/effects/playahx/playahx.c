@@ -11,6 +11,7 @@
 #include "keyboard.h"
 #include "event.h"
 #include "blitter.h"
+#include "tasks.h"
 
 LONG __chipmem = 100 * 1024;
 LONG __fastmem = 420 * 1024;
@@ -226,7 +227,7 @@ static void Init() {
 static void Kill() {
   RemIntServer(INTB_PORTS, AhxPlayerInterrupt);
 
-  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER)
+  DisableDMA(DMAF_COPPER | DMAF_RASTER | DMAF_BLITTER);
 
   KillWaveScope();
   AhxStopSong();
@@ -259,6 +260,8 @@ static void Render() {
   }
   
   // Log("playahx: %ld\n", ReadLineCounter() - lines);
+
+  TaskWait(VBlankEvent);
 }
 
 static BOOL HandleEvent() {

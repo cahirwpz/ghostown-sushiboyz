@@ -1,7 +1,7 @@
 TOPDIR = $(realpath .)
 
-all: build-base build-effects build-sushiboyz
+all: build-tools build-base build-sushiboyz
 
 include $(TOPDIR)/build.mk
 
-clean:: clean-base clean-effects clean-sushiboyz
+clean:: clean-sushiboyz clean-base clean-tools

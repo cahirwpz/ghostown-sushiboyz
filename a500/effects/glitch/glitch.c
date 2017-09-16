@@ -4,6 +4,7 @@
 #include "gfx.h"
 #include "ilbm.h"
 #include "blitter.h"
+#include "tasks.h"
 
 STRPTR __cwdpath = "data";
 
@@ -21,7 +22,7 @@ static CopListT *cp;
 static CopInsT *line[HEIGHT];
 
 static void Load() {
-  logo = LoadILBMCustom("ghostown_160x128.ilbm", BM_DISPLAYABLE);
+  logo = LoadILBMCustom("ghostown-logo.ilbm", BM_DISPLAYABLE);
 }
 
 static void UnLoad() {
@@ -57,7 +58,6 @@ static void BitplaneCopyFast(BitmapT *dst, WORD d, UWORD x, UWORD y,
   custom->bltdpt = dstbpt;
   custom->bltsize = bltsize;
 }
-
 
 static void Init() {
   WORD i;
@@ -136,8 +136,8 @@ static void Render() {
 
   // Log("glitch: %ld\n", ReadLineCounter() - lines);
 
-  WaitVBlank();
   ITER(i, 0, DEPTH - 1, CopInsSet32(bplptr[i], screen[active]->planes[i]));
+  TaskWait(VBlankEvent);
   active ^= 1;
 }
 

@@ -51,12 +51,11 @@ SOURCES_C := \
 
 SOURCES_ASM := \
 	c2p_1x1_4.s \
-	hrtmon.s \
 	inflate.s \
-	newstackswap.s \
 	rawio-par.s \
 	rawio-ser.s \
-	sintab.s
+	sintab.s \
+	tasks-ll.s
 
 all: libsys.a
 

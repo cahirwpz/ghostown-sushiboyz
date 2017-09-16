@@ -5,24 +5,25 @@
 #include "fx.h"
 #include "memory.h"
 #include "ilbm.h"
+#include "tasks.h"
 
 STRPTR __cwdpath = "data";
 
 #define WIDTH  320
 #define HEIGHT 256
-#define DEPTH  5
+#define DEPTH  4
 
 static ShapeT *shape;
 static PaletteT *palette;
 static BitmapT *screen;
-static CopInsT *bplptr[5];
+static CopInsT *bplptr[DEPTH];
 static CopListT *cp;
 static WORD plane, planeC;
 
 static void Load() {
   screen = NewBitmap(WIDTH, HEIGHT, DEPTH);
   shape = LoadShape("night.2d");
-  palette = LoadPalette("boxes-pal.ilbm");
+  palette = LoadPalette("shapes-pal.ilbm");
 }
 
 static void UnLoad() {
@@ -125,12 +126,13 @@ static void Render() {
   DrawShape(shape);
   BlitterFill(screen, plane);
   // Log("shape: %ld\n", ReadLineCounter() - lines);
-  WaitVBlank();
 
   for (i = 0; i < DEPTH; i++) {
     WORD j = (plane + i) % DEPTH;
     CopInsSet32(bplptr[i], screen->planes[j]);
   }
+
+  TaskWait(VBlankEvent);
 
   if (planeC & 1)
     plane = (plane + 1) % DEPTH;
