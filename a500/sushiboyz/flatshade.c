@@ -7,6 +7,7 @@
 #include "ilbm.h"
 #include "sprite.h"
 #include "interrupts.h"
+#include "tasks.h"
 
 #define WIDTH  256
 #define HEIGHT 256
@@ -424,8 +425,8 @@ static void Render() {
       activePal = palette[palnum - 1];
   }
 
-  WaitVBlank();
   CopUpdateBitplanes(bplptr, window0, DEPTH);
+  TaskWait(VBlankEvent);
   swapr(window0, window1);
 }
 

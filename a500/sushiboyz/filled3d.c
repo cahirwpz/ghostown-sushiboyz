@@ -6,6 +6,7 @@
 #include "ffp.h"
 #include "memory.h"
 #include "ilbm.h"
+#include "tasks.h"
 
 #define WIDTH  256
 #define HEIGHT 256
@@ -560,8 +561,8 @@ static void Render() {
   DisableDMA(DMAF_BLITHOG);
   // PROFILE_END(filled3d);
 
-  WaitVBlank();
   CopUpdateBitplanes(bplptr, window0, DEPTH);
+  TaskWait(VBlankEvent);
   swapr(window0, window1);
 }
 

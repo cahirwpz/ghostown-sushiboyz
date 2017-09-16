@@ -8,6 +8,7 @@
 #include "ffp.h"
 #include "fx.h"
 #include "3d.h"
+#include "tasks.h"
 
 #define WIDTH  320
 #define HEIGHT 240
@@ -262,14 +263,14 @@ static void DrawSpans(UBYTE *bpl) {
 static inline void SwapBitplanes() {
   WORD n = DEPTH;
 
-  WaitVBlank();
-
   while (--n >= 0) {
     WORD i = (active + n + 1 - DEPTH) % (DEPTH + 1);
     if (i < 0)
       i += DEPTH + 1;
     CopInsSet32(bplptr[n], window->planes[i]);
   }
+
+  TaskWait(VBlankEvent);
 
   active = (active + 1) % (DEPTH + 1);
 }

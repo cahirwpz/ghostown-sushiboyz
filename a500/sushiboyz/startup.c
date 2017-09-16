@@ -8,22 +8,27 @@
 #include "hardware.h"
 #include "interrupts.h"
 #include "io.h"
+#include "tasks.h"
 #include "sushiboyz.h"
 
 STRPTR __cwdpath = "nigiri";
 LONG __chipmem = 460 * 1024;
 LONG __fastmem = 380 * 1024;
 
+extern BOOL execOnly;
+
 static WORD kickVer;
 static struct List PortsIntChain;
 static struct List CoperIntChain;
 static struct List VertbIntChain;
-static struct List TaskReady;
-static struct List TaskWait;
+static struct List OrigTaskReady;
+static struct List OrigTaskWait;
 
-static struct View *oldView;
-static UWORD oldDmacon, oldIntena, oldAdkcon;
-static ULONG oldCacheBits = 0;
+static struct {
+  struct View *view;
+  UWORD dmacon, intena, adkcon;
+  ULONG cacheBits;
+} old;
 
 static struct Task *idleTask = NULL;
 
@@ -31,6 +36,17 @@ static void IdleTask() {
   Log("[Init] Idle task %lx started!\n", (LONG)FindTask(NULL));
   for (;;) {}
 }
+
+/* VBlank event list. */
+struct List *VBlankEvent = &(struct List){};
+
+/* Wake up tasks asleep in wait for VBlank interrupt. */
+static LONG VBlankEventHandler() {
+  TaskSignalIntr(VBlankEvent);
+  return 0;
+}
+
+INTERRUPT(VBlankWakeUp, 10, VBlankEventHandler, NULL);
 
 void KillOS() {
   Log("[Startup] Save AmigaOS state.\n");
@@ -41,22 +57,23 @@ void KillOS() {
 
   /* No calls to any other library than exec beyond this point or expect
    * undefined behaviour including crashes. */
+  execOnly = TRUE;
   Forbid();
 
   /* Disable CPU caches. */
   if (kickVer >= 36)
-    oldCacheBits = CacheControl(0, -1);
+    old.cacheBits = CacheControl(0, -1);
 
   /* Intercept the view of AmigaOS. */
-  oldView = GfxBase->ActiView;
+  old.view = GfxBase->ActiView;
   LoadView(NULL);
   WaitTOF();
   WaitTOF();
 
   /* DMA & interrupts take-over. */
-  oldAdkcon = custom->adkconr;
-  oldDmacon = custom->dmaconr;
-  oldIntena = custom->intenar;
+  old.adkcon = custom->adkconr;
+  old.dmacon = custom->dmaconr;
+  old.intena = custom->intenar;
 
   /* Prohibit dma & interrupts. */
   custom->adkcon = (UWORD)~ADKF_SETCLR;
@@ -87,8 +104,8 @@ void KillOS() {
   NewList(SysBase->IntVects[INTB_VERTB].iv_Data);
 
   /* Save original task lists. */
-  CopyMem(&SysBase->TaskReady, &TaskReady, sizeof(struct List));
-  CopyMem(&SysBase->TaskWait, &TaskWait, sizeof(struct List));
+  CopyMem(&SysBase->TaskReady, &OrigTaskReady, sizeof(struct List));
+  CopyMem(&SysBase->TaskWait, &OrigTaskWait, sizeof(struct List));
 
   /* Reset system's task lists. */
   NewList(&SysBase->TaskReady);
@@ -96,6 +113,11 @@ void KillOS() {
 
   /* Restore multitasking. */
   Permit();
+
+  SetTaskPri(SysBase->ThisTask, 0);
+
+  NewList(VBlankEvent);
+  AddIntServer(INTB_VERTB, VBlankWakeUp);
 
   idleTask = CreateTask("Idle Task", -10, IdleTask, 4096);
 }
@@ -105,6 +127,8 @@ void RestoreOS() {
 
   RemTask(idleTask);
 
+  RemIntServer(INTB_VERTB, VBlankWakeUp);
+
   /* Suspend multitasking. */
   Forbid();
 
@@ -113,9 +137,13 @@ void RestoreOS() {
   custom->intena = (UWORD)~INTF_SETCLR;
   WaitVBlank();
 
+  /* Clear all interrupt requests. Really. */
+  custom->intreq = (UWORD)~INTF_SETCLR;
+  custom->intreq = (UWORD)~INTF_SETCLR;
+
   /* Restore original task lists. */
-  CopyMem(&TaskReady, &SysBase->TaskReady, sizeof(struct List));
-  CopyMem(&TaskWait, &SysBase->TaskWait, sizeof(struct List));
+  CopyMem(&OrigTaskReady, &SysBase->TaskReady, sizeof(struct List));
+  CopyMem(&OrigTaskWait, &SysBase->TaskWait, sizeof(struct List));
 
   /* Restore original interrupt server chains. */
   CopyMem(&PortsIntChain, SysBase->IntVects[INTB_PORTS].iv_Data,
@@ -126,25 +154,26 @@ void RestoreOS() {
           sizeof(struct List));
 
   /* Restore AmigaOS state of dma & interrupts. */
-  custom->dmacon = oldDmacon | DMAF_SETCLR;
-  custom->intena = oldIntena | INTF_SETCLR;
-  custom->adkcon = oldAdkcon | ADKF_SETCLR;
+  custom->dmacon = old.dmacon | DMAF_SETCLR;
+  custom->intena = old.intena | INTF_SETCLR;
+  custom->adkcon = old.adkcon | ADKF_SETCLR;
 
   /* Restore old copper list... */
   custom->cop1lc = (ULONG)GfxBase->copinit;
   WaitVBlank();
 
   /* ... and original view. */
-  LoadView(oldView);
+  LoadView(old.view);
   WaitTOF();
   WaitTOF();
 
   /* Enable CPU caches. */
   if (kickVer >= 36)
-    CacheControl(oldCacheBits, -1);
+    CacheControl(old.cacheBits, -1);
 
   /* Restore multitasking. */
   Permit();
+  execOnly = FALSE;
 
   /* Deallocate blitter. */
   DisownBlitter();

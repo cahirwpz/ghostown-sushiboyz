@@ -17,6 +17,7 @@
 
 extern BitmapT *screen0, *screen1;
 extern TrackT **tracks;
+extern struct List *VBlankEvent;
 
 /* References to all effects. */
 extern EffectT Ninja1;

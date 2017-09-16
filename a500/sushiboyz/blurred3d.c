@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "sprite.h"
 #include "ilbm.h"
+#include "tasks.h"
 
 #define WIDTH  176
 #define HEIGHT 176
@@ -545,13 +546,13 @@ static void Render() {
 
   BitmapIncSaturatedFast(window0, source);
 
-  WaitVBlank();
   {
     WORD n = DEPTH;
 
     while (--n >= 0)
       CopInsSet32(bplptr[n], window0->planes[n]);
   }
+  TaskWait(VBlankEvent);
   swapr(window0, window1);
 }
 

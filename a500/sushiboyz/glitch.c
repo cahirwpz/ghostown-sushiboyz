@@ -4,6 +4,7 @@
 #include "gfx.h"
 #include "ilbm.h"
 #include "blitter.h"
+#include "tasks.h"
 
 #define WIDTH (160 + 32)
 #define HEIGHT (160 + 32)
@@ -140,8 +141,8 @@ static void Render() {
     }
   }
 
-  WaitVBlank();
   ITER(i, 0, DEPTH - 1, CopInsSet32(bplptr[i], window0->planes[i]));
+  TaskWait(VBlankEvent);
   swapr(window0, window1);
 }
 

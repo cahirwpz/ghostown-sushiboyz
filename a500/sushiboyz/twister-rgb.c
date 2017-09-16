@@ -8,6 +8,7 @@
 #include "sprite.h"
 #include "random.h"
 #include "color.h"
+#include "tasks.h"
 
 #define WIDTH   144
 #define HEIGHT  255
@@ -342,8 +343,8 @@ static void Render() {
   SetLineColor(frame0, (WORD *)rotatedStripes);
   // PROFILE_END(twister);
 
-  WaitVBlank();
-  CopListActivate(frame0->cp);
+  CopListRun(frame0->cp);
+  TaskWait(VBlankEvent);
   swapr(frame0, frame1);
 }
 

@@ -10,6 +10,7 @@
 #include "interrupts.h"
 #include "memory.h"
 #include "io.h"
+#include "tasks.h"
 
 #define WIDTH 64
 #define HEIGHT 64
@@ -596,9 +597,10 @@ static void Render() {
 #endif
   MakeCopperList(cp1, 160 + TrackValueGet(pos_x, frameCount));
 
-  CopListActivate(cp1);
-  swapr(cp0, cp1);
+  CopListRun(cp1);
 
+  TaskWait(VBlankEvent);
+  swapr(cp0, cp1);
   flashActive = 0;
 }
 

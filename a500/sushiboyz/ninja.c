@@ -6,6 +6,7 @@
 #include "blitter.h"
 #include "2d.h"
 #include "interrupts.h"
+#include "tasks.h"
 
 #define WIDTH 256
 #define HEIGHT 144
@@ -134,8 +135,8 @@ static void Kill() {
 }
 
 static void SwapScreen() {
-  WaitVBlank();
   CopUpdateBitplanes(bplptr, window0, DEPTH);
+  TaskWait(VBlankEvent);
   swapr(window0, window1);
 }
 

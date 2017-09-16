@@ -9,6 +9,7 @@
 #include "ilbm.h"
 #include "color.h"
 #include "sprite.h"
+#include "tasks.h"
 
 #define WIDTH 320
 #define HEIGHT 256
@@ -524,7 +525,7 @@ static void Render() {
   // PROFILE_END(floor);
 
   CopListRun(cp0);
-  WaitVBlank();
+  TaskWait(VBlankEvent);
   { CopListT *tmp = cp0; cp0 = cp1; cp1 = tmp; }
   { BitmapT *tmp = window0; window0 = window1; window1 = tmp; }
 }

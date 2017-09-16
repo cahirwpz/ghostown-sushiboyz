@@ -9,6 +9,7 @@
 #include "color.h"
 #include "random.h"
 #include "sprite.h"
+#include "tasks.h"
 
 #define WIDTH 320
 #define HEIGHT 256
@@ -374,8 +375,8 @@ static void Render() {
   }
   // PROFILE_END(floor);
 
-  WaitVBlank();
-  CopListActivate(frame0->cp);
+  CopListRun(frame0->cp);
+  TaskWait(VBlankEvent);
   swapr(frame0, frame1);
 }
 
