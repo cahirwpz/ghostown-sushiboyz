@@ -14,6 +14,7 @@ SOURCES_C = ninja.c \
             flatshade.c \
             sushigirl.c \
             glitch.c \
+            worker.c \
             timeline.c
 
 DATA := nigiri/01_ninja_anim1.iff \

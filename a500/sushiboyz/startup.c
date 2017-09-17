@@ -30,13 +30,6 @@ static struct {
   ULONG cacheBits;
 } old;
 
-static struct Task *idleTask = NULL;
-
-static void IdleTask() {
-  Log("[Init] Idle task %lx started!\n", (LONG)FindTask(NULL));
-  for (;;) {}
-}
-
 /* VBlank event list. */
 struct List *VBlankEvent = &(struct List){};
 
@@ -118,14 +111,10 @@ void KillOS() {
 
   NewList(VBlankEvent);
   AddIntServer(INTB_VERTB, VBlankWakeUp);
-
-  idleTask = CreateTask("Idle Task", -10, IdleTask, 4096);
 }
 
 void RestoreOS() {
   Log("[Startup] Restore AmigaOS state.\n");
-
-  RemTask(idleTask);
 
   RemIntServer(INTB_VERTB, VBlankWakeUp);
 
