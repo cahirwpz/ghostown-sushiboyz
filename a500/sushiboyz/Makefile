@@ -112,7 +112,7 @@ DATA := nigiri/01_ninja_anim1.iff \
         nigiri/p61.jazzcat-sushiboyz \
         nigiri/smp.jazzcat-sushiboyz \
         nigiri/sushiboyz.sync \
-        nigiri/boot.iff
+        nigiri/boot.ilbm
 
 LIBS := lib3d libsync libp61
 

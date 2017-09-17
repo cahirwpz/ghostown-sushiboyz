@@ -87,7 +87,7 @@ static TimeActionT actions[] = {
 static CopListT *cp;
 
 static void BootInit() {
-  BitmapT *boot = LoadILBM("boot.iff");
+  BitmapT *boot = LoadILBM("boot.ilbm");
   UWORD cx = (WIDTH - boot->width) / 2;
   UWORD cy = (HEIGHT - boot->height) / 2;
 
