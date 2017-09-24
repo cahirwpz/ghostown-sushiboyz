@@ -2,11 +2,11 @@ TOPDIR = $(realpath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 
 LIBS += libsys libc
 CPPFLAGS += -I$(TOPDIR)/effects
-LDLIBS += $(foreach lib,$(LIBS),$(TOPDIR)/base/$(lib)/$(lib).a)
+LDEXTRA = $(foreach lib,$(LIBS),$(TOPDIR)/base/$(lib)/$(lib).a)
 
 include $(TOPDIR)/build.mk
 
-%.exe: $(TOPDIR)/base/crt0.o %.o $(OBJECTS) startup.o
+%.exe: $(CRT0) %.o startup.o $(LDEXTRA)
 	@echo "[$(DIR):ld] $@"
 	$(CC) $(LDFLAGS) -Wl,-Map=$@.map -o $@ $^ $(LDLIBS)
 	$(CP) $@ $@.dbg
@@ -14,12 +14,17 @@ include $(TOPDIR)/build.mk
 
 %.3d: %.lwo
 	@echo "[$(DIR):conv] $< -> $@"
-	$(DUMPLWO) $< $@
+	$(DUMPLWO) -f $< $@
 
 %.ilbm: %.png
 	@echo "[$(DIR):conv] $< -> $@"
 	$(ILBMCONV) $< $@
 	$(ILBMPACK) -f $@
+
+%.png: %.psfu
+	@echo "[$(DIR):conv] $< -> $@"
+	$(PSFTOPNG) $<
+	$(OPTIPNG) $@
 
 %.bin: %.asm
 	@echo "[$(DIR):bin] $< -> $@"
