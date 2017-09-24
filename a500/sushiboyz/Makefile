@@ -17,7 +17,8 @@ SOURCES_C = ninja.c \
             loading.c \
             music.c \
             palops.c \
-            worker.c
+            worker.c \
+            startup.c
 
 DATA := nigiri/01_ninja_anim1.iff \
         nigiri/01_ninja_anim2.iff \

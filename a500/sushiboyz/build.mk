@@ -6,7 +6,7 @@ LDEXTRA = $(foreach lib,$(LIBS),$(TOPDIR)/base/$(lib)/$(lib).a)
 
 include $(TOPDIR)/build.mk
 
-%.exe: $(CRT0) %.o startup.o $(LDEXTRA)
+%.exe: $(CRT0) %.o $(OBJECTS) $(LDEXTRA)
 	@echo "[$(DIR):ld] $@"
 	$(CC) $(LDFLAGS) -Wl,-Map=$@.map -o $@ $^ $(LDLIBS)
 	$(CP) $@ $@.dbg
