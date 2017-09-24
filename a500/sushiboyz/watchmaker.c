@@ -64,11 +64,4 @@ static void Kill() {
   DeleteCopList(cp);
 }
 
-static void Render() {
-  LoadEffects(currentTimeSlot, 2);
-  EffectPrepare(&SushiGirl);
-  EffectPrepare(&UVMap);
-  EffectPrepare(&Filled3D);
-}
-
-EFFECT(Watchmaker, Load, UnLoad, Init, Kill, Render, Prepare);
+EFFECT(Watchmaker, Load, UnLoad, Init, Kill, NULL, Prepare);

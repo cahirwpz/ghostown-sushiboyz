@@ -65,11 +65,4 @@ static void Kill() {
   DeleteCopList(cp);
 }
 
-static void Render() {
-  LoadEffects(currentTimeSlot, 1);
-  EffectPrepare(&Bumpmap);
-  EffectPrepare(&Credits);
-  EffectPrepare(&Thunders);
-}
-
-EFFECT(GhostownLogo, Load, UnLoad, Init, Kill, Render, NULL);
+EFFECT(GhostownLogo, Load, UnLoad, Init, Kill, NULL, NULL);

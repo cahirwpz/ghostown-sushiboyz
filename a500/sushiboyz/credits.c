@@ -482,8 +482,6 @@ static void Render() {
         MakeUVMapRenderCode();
         MemFree(uvmap);
 
-        EffectPrepare(&Watchmaker);
-
         textureHi = NewPixmap(texture->width, texture->height * 2,
                               PM_CMAP8, MEMF_PUBLIC);
         textureLo = NewPixmap(texture->width, texture->height * 2,

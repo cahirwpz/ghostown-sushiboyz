@@ -1,16 +1,16 @@
-#include <proto/alib.h>
 #include <exec/tasks.h>
 #include <exec/execbase.h>
 
 #include "hardware.h"
-#include "interrupts.h"
 #include "memory.h"
 #include "blitter.h"
 #include "reader.h"
-#include "color.h"
 #include "io.h"
 #include "ilbm.h"
 #include "serial.h"
+#include "coplist.h"
+#include "tasks.h"
+#include "worker.h"
 
 #include "sushiboyz.h"
 
@@ -18,108 +18,242 @@
 #define HEIGHT 256
 #define DEPTH 5
 
-#define _TA_LOAD(effect)  { TA_LOAD, -1, &(effect) }
-#define _TA_WAIT(time)    { TA_WAIT, PT_FRAME(time), NULL }
-#define _TA_END()         { 0, -1, NULL }
-
-typedef enum __attribute__((packed)) {
-  TA_WAIT = 1, TA_LOAD, TA_PREPARE 
-} TimeActionTag;
-
-typedef struct {
-  TimeActionTag type;
-  UWORD frame;
-  EffectT *effect;
-} TimeActionT;
-
 /* Resources shared among all effects. */
 BitmapT *screen0, *screen1;
 TrackT **tracks;
 
+/*****************************************************************************/
+/* Demo time line.                                                           */
+/*****************************************************************************/
+
+typedef struct TimeSlot {
+  UWORD start, end;
+  EffectT *effect;
+} TimeSlotT;
+
+#ifndef FRAMES_PER_ROW
+#error "FRAMES_PER_ROW: not defined!"
+#endif
+
+#define PT_FRAME(pos) \
+  (((((pos) >> 8) & 0xff) * 64 + ((pos) & 0x3f)) * FRAMES_PER_ROW)
+
+#define _TS(begin, end, effect) \
+  { PT_FRAME(begin), PT_FRAME(end), &(effect) }
+
+#define _TS_END() {0, 0, NULL}
+
+#define TS_LAST_P(TS) ((TS)->effect == NULL)
+
 static TimeSlotT timeline[] = {
-  _TS(0x0000, 0x0020, 0, Ninja1),
-  _TS(0x0020, 0x0120, 0, Ninja2),
-  _TS(0x0120, 0x0210, 0, Ninja3),
-  _TS(0x0210, 0x0300, 0, Toilet),
-  _TS(0x0300, 0x0500, 0, Floor),
-  _TS(0x0500, 0x0700, 0, FlatShade),
-  _TS(0x0700, 0x0900, 0, RunningMan),
-  _TS(0x0900, 0x0b00, 0, Blurred3D),
-  _TS(0x0b00, 0x0c00, 0, GhostownLogo),
-  _TS(0x0c00, 0x0d00, 0, Bumpmap),
-  _TS(0x0d00, 0x1100, 0, Credits),
-  _TS(0x1100, 0x1200, 1, Thunders),
-  _TS(0x1200, 0x1300, 1, Twister),
-  _TS(0x1300, 0x1400, 1, Watchmaker),
-  _TS(0x1400, 0x1500, 2, UVMap),
-  _TS(0x1500, 0x1700, 0, Filled3D),
-  _TS(0x1700, 0x1800, 2, SushiGirl),
-  _TS(0x1800, 0x183C, 3, Glitch),
+  _TS(0x0000, 0x0020, Ninja1),
+  _TS(0x0020, 0x0120, Ninja2),
+  _TS(0x0120, 0x0210, Ninja3),
+  _TS(0x0210, 0x0300, Toilet),
+  _TS(0x0300, 0x0500, Floor),
+  _TS(0x0500, 0x0700, FlatShade),
+  _TS(0x0700, 0x0900, RunningMan),
+  _TS(0x0900, 0x0b00, Blurred3D),
+  _TS(0x0b00, 0x0c00, GhostownLogo),
+  _TS(0x0c00, 0x0d00, Bumpmap),
+  _TS(0x0d00, 0x1100, Credits),
+  _TS(0x1100, 0x1200, Thunders),
+  _TS(0x1200, 0x1300, Twister),
+  _TS(0x1300, 0x1400, Watchmaker),
+  _TS(0x1400, 0x1500, UVMap),
+  _TS(0x1500, 0x1700, Filled3D),
+  _TS(0x1700, 0x1800, SushiGirl),
+  _TS(0x1800, 0x183C, Glitch),
   _TS_END()
 };
 
+UWORD frameFromStart;
+UWORD frameTillEnd;
+UWORD frameCount;
+UWORD lastFrameCount;
+
+static TimeSlotT *currentTimeSlot;
+
 #if 0
-static TimeActionT actions[] = {
-  _TA_LOAD(Ninja1),
-  _TA_LOAD(Ninja2),
-  _TA_LOAD(Ninja3),
-  _TA_LOAD(Toilet),
-  _TA_LOAD(Floor),
-  _TA_LOAD(FlatShade),
-  _TA_LOAD(RunningMan),
-  _TA_LOAD(Blurred3D),
-  _TA_LOAD(GhostownLogo),
-  _TA_LOAD(Bumpmap),
-  _TA_LOAD(Credits),
-  _TA_LOAD(Filled3D),
-  _TA_WAIT(0x1100),
-  _TA_LOAD(Thunders),
-  _TA_LOAD(Twister),
-  _TA_LOAD(Watchmaker),
-  _TA_WAIT(0x1400),
-  _TA_LOAD(UVMap),
-  _TA_LOAD(SushiGirl),
-  _TA_LOAD(Glitch),
-  _TA_END()
-};
+TimeSlotT *TimelineForward(TimeSlotT *item, WORD pos) {
+  for (; item->effect; item++)
+    if ((item->start <= pos) && (pos < item->end))
+      break;
+  return item->effect ? item : NULL;
+}
 #endif
 
-static CopListT *cp;
-
-static void BootInit() {
-  BitmapT *boot = LoadILBM("boot.ilbm");
-  UWORD cx = (WIDTH - boot->width) / 2;
-  UWORD cy = (HEIGHT - boot->height) / 2;
-
-  EnableDMA(DMAF_BLITTER);
-  BitmapCopyFast(screen0, cx, cy, boot);
-  BitmapCopyFast(screen1, cx, cy, boot);
-  DisableDMA(DMAF_BLITTER);
-
-  cp = NewCopList(100);
-
-  CopInit(cp);
-  CopSetupGfxSimple(cp, MODE_LORES, DEPTH, X(0), Y(0), WIDTH, HEIGHT);
-  CopSetupBitplanes(cp, NULL, screen0, DEPTH);
-  CopLoadPal(cp, boot->palette, 0);
-  CopEnd(cp);
-
-  DeletePalette(boot->palette);
-  DeleteBitmap(boot);
-
-  CopListActivate(cp);
-  EnableDMA(DMAF_RASTER);
+void UpdateFrameCount() {
+  frameCount = ReadFrameCounter();
+  frameFromStart = frameCount - currentTimeSlot->start;
+  frameTillEnd = currentTimeSlot->end - frameCount;
 }
 
-static void BootKill() {
-  DisableDMA(DMAF_RASTER | DMAF_COPPER);
-  DeleteCopList(cp);
+/*****************************************************************************/
+/* Actions to be performed in background while demo is running.              */
+/*****************************************************************************/
+
+typedef struct TimeAction {
+  WorkT work;
+  UWORD time;
+} TimeActionT;
+
+#define _WORK(func, data) \
+  (WorkT){ {}, WS_NEW, (WorkFuncT)(func), (void *)(data) }
+
+#define _TA_LOAD(time, effect) \
+  { _WORK(EffectLoad, &(effect)), PT_FRAME(time) }
+#define _TA_PREP(time, effect) \
+  { _WORK(EffectPrepare, &(effect)), PT_FRAME(time) }
+#define _TA_END() {}
+
+#define TA_LAST_P(TA) ((TA)->work.func == NULL)
+#define TA_AFTER_P(TA, TIME) ((TA)->time > (TIME))
+
+/* 'actions' must be sorted by time */
+static TimeActionT actions[] = {
+  _TA_LOAD(0x0000, Music),
+  _TA_LOAD(0x0000, Ninja1),
+  _TA_LOAD(0x0000, Ninja2),
+  _TA_LOAD(0x0000, Ninja3),
+  _TA_LOAD(0x0000, Toilet),
+  _TA_LOAD(0x0210, Floor),              /* Toilet */
+  _TA_PREP(0x0210, Floor),
+  _TA_LOAD(0x0210, FlatShade),
+  _TA_LOAD(0x0210, RunningMan),
+  _TA_LOAD(0x0700, Blurred3D),          /* RunningMan */
+  _TA_LOAD(0x0900, GhostownLogo),       /* Blurred3D */
+  _TA_LOAD(0x0900, Bumpmap),
+  _TA_PREP(0x0900, Bumpmap),
+  _TA_LOAD(0x0900, Credits),
+  _TA_PREP(0x0900, Credits),
+  _TA_LOAD(0x1000, Thunders),
+  _TA_PREP(0x1000, Thunders),
+  _TA_LOAD(0x1100, Twister),
+  _TA_LOAD(0x1100, Watchmaker),
+  _TA_PREP(0x1100, Watchmaker),
+  _TA_LOAD(0x1300, UVMap),              /* Watchmaker */
+  _TA_PREP(0x1300, UVMap),
+  _TA_LOAD(0x1300, Filled3D),
+  _TA_PREP(0x1300, Filled3D),
+  _TA_LOAD(0x1500, SushiGirl),          /* Filled3D */
+  _TA_PREP(0x1500, SushiGirl),
+  _TA_LOAD(0x1700, Glitch),
+  _TA_END()
+};
+
+static TimeActionT *todoTimeAction = actions;
+
+/* Schedule all time actions that should be finished before given time. */
+void TimeActionSchedule(UWORD time) {
+  while (!TA_LAST_P(todoTimeAction) && !TA_AFTER_P(todoTimeAction, time)) {
+    WorkAdd(&todoTimeAction->work);
+    todoTimeAction++;
+  }
 }
 
-INTERRUPT(P61PlayerInterrupt, 10, P61_Music, NULL);
+/* Has worker thread finished all scheduled actions till given time? */
+BOOL TimeActionIsDone(UWORD time) {
+  TimeActionT *ta = todoTimeAction;
+
+  /* Return if no actions were scheduled so far... */
+  if (ta == actions)
+    return TRUE;
+
+  /* Go backwards to find last TA with time that is not after given time. */
+  do {
+    --ta;
+  } while (TA_AFTER_P(ta, time));
+
+  return ta->work.state == WS_DONE;
+}
+
+/*****************************************************************************/
+/* Main routine driving demo.                                                */
+/*****************************************************************************/
+
+static void RunEffects(TimeSlotT *item) {
+  BOOL exit = FALSE;
+
+#if REMOTE_CONTROL
+  char cmd[16];
+  WORD cmdLen = 0;
+  memset(cmd, 0, sizeof(cmd));
+#endif
+
+  SetFrameCounter(item->start);
+
+  for (; item->effect && !exit; item++) {
+    EffectT *effect = item->effect;
+    WORD realStart;
+
+    if (!(ReadFrameCounter() < item->end))
+      continue;
+
+    while (ReadFrameCounter() < item->start) {
+      if (LeftMouseButton()) {
+        exit = TRUE;
+        break;
+      }
+    }
+
+    currentTimeSlot = item;
+
+    EffectPrepare(effect);
+    EffectInit(effect);
+
+    frameFromStart = 0;
+    frameTillEnd = item->end - item->start;
+    realStart = ReadFrameCounter();
+
+    lastFrameCount = ReadFrameCounter();
+    while (frameCount < item->end) {
+      WORD t = ReadFrameCounter();
+      TimeActionSchedule(t);
+#if REMOTE_CONTROL
+      SerialPrint("F %ld\n", (LONG)t);
+#endif
+      frameCount = t;
+      frameFromStart = frameCount - realStart;
+      frameTillEnd = item->end - frameCount;
+      if (effect->Render)
+        effect->Render();
+      else
+        TaskWait(VBlankEvent);
+      lastFrameCount = t;
+
+      if (LeftMouseButton()) {
+        exit = TRUE;
+        break;
+      }
+#if REMOTE_CONTROL
+      {
+        LONG c;
+
+        while ((c = SerialGet()) >= 0) {
+          if (c == '\n') {
+            Log("[Serial] Received line '%s'\n", cmd);
+            memset(cmd, 0, sizeof(cmd));
+            cmdLen = 0;
+          } else {
+            cmd[cmdLen++] = c;
+          }
+        }
+      }
+#endif
+    }
+
+    EffectKill(effect);
+    WaitVBlank();
+    EffectUnLoad(effect);
+
+    currentTimeSlot = NULL;
+  }
+}
 
 int main() {
   SerialInit(9600);
+  WorkerStart();
 
   Log("  _.___    ___.    ______ ___     ___    ______   ____ ______\n"
       "  \\| _/___.\\ _|___/     //  /___ /  /__ /     /  /   /      /\n"
@@ -134,146 +268,67 @@ int main() {
   SerialPrint("FPR %ld\n", (LONG)FRAMES_PER_ROW);
 
   {
-    TimeSlotT *item = timeline;
-    for (; item->effect; item++)
-      SerialPrint("TS %ld %ld %ld %s\n", (LONG)item->start, (LONG)item->end,
-                  (LONG)item->phase, item->effect->name);
+    TimeSlotT *item;
+    for (item = timeline; !TS_LAST_P(item); item++)
+      SerialPrint("TS %ld %ld %s\n", (LONG)item->start, (LONG)item->end,
+                  item->effect->name);
+  }
+
+  {
+    TimeActionT *item;
+    for (item = actions; !TA_LAST_P(item); item++) {
+      EffectT *effect = item->work.data;
+      const char *action = "?";
+      if (item->work.func == (WorkFuncT)&EffectLoad)
+        action = "LOAD";
+      if (item->work.func == (WorkFuncT)&EffectPrepare)
+        action = "PREPARE";
+      SerialPrint("TA %ld %s %s\n", (LONG)item->time, action, effect->name);
+    }
   }
 
   screen0 = NewBitmap(WIDTH, HEIGHT, DEPTH);
   screen1 = NewBitmap(WIDTH, HEIGHT, DEPTH);
 
-  BootInit();
+  /* Display loading screen and load demo. */
+  {
+    TimeActionSchedule(0);
 
-  if ((tracks = LoadTrackList("sushiboyz.sync"))) {
-    APTR module = LoadFile("p61.jazzcat-sushiboyz", MEMF_PUBLIC);
-    APTR samples = LoadFile("smp.jazzcat-sushiboyz", MEMF_CHIP);
+    EffectLoad(&Loading);
+    EffectInit(&Loading);
 
-    LoadEffects(timeline, -1);
+    /* Reset frame counter and wait for all time actions to finish. */
+    SetFrameCounter(0);
 
-    P61_Init(module, samples, NULL);
-    P61_ControlBlock.Play = 1;
-    AddIntServer(INTB_VERTB, P61PlayerInterrupt);
+    while (!TimeActionIsDone(0)) {
+      if (Loading.Render)
+        Loading.Render();
+      else
+        TaskWait(VBlankEvent);
+    }
 
-    DisableDMA(DMAF_RASTER | DMAF_COPPER);
-
-    RunEffects(timeline);
-
-    RemIntServer(INTB_VERTB, P61PlayerInterrupt);
-    P61_ControlBlock.Play = 0;
-    P61_End();
-
-    UnLoadEffects(timeline);
-
-    MemFree(module);
-    MemFree(samples);
-
-    DeleteTrackList(tracks);
+    EffectKill(&Loading);
   }
 
-  BootKill();
+  /* Run all effects listed in demo timeline. */
+  EffectInit(&Music);
+  RunEffects(timeline);
+  EffectKill(&Music);
+  EffectUnLoad(&Music);
+
+  /* Free all resources allocated by effects. */
+  {
+    TimeSlotT *item;
+
+    for (item = timeline; item->effect; item++)
+      EffectUnLoad(item->effect);
+  }
 
   DeleteBitmap(screen1);
   DeleteBitmap(screen0);
 
+  WorkerShutdown();
   SerialKill();
 
   return 0;
 }
-
-__regargs void FadeBlack(PaletteT *pal, CopInsT *ins, WORD step) {
-  WORD n = pal->count;
-  UBYTE *c = (UBYTE *)pal->colors;
-
-  if (step < 0)
-    step = 0;
-  if (step > 15)
-    step = 15;
-
-  while (--n >= 0) {
-    WORD r = *c++;
-    WORD g = *c++;
-    WORD b = *c++;
-
-    r = (r & 0xf0) | step;
-    g = (g & 0xf0) | step;
-    b = (b & 0xf0) | step;
-    
-    CopInsSet16(ins++, (colortab[r] << 4) | colortab[g] | (colortab[b] >> 4));
-  }
-}
-
-__regargs void FadeWhite(PaletteT *pal, CopInsT *ins, WORD step) {
-  WORD n = pal->count;
-  UBYTE *c = (UBYTE *)pal->colors;
-
-  if (step < 0)
-    step = 0;
-  if (step > 15)
-    step = 15;
-
-  while (--n >= 0) {
-    WORD r = *c++;
-    WORD g = *c++;
-    WORD b = *c++;
-
-    r = ((r & 0xf0) << 4) | 0xf0 | step;
-    g = ((g & 0xf0) << 4) | 0xf0 | step;
-    b = ((b & 0xf0) << 4) | 0xf0 | step;
-
-    CopInsSet16(ins++, (colortab[r] << 4) | colortab[g] | (colortab[b] >> 4));
-  }
-}
-
-__regargs void FadeIntensify(PaletteT *pal, CopInsT *ins, WORD step) {
-  WORD n = pal->count;
-  UBYTE *c = (UBYTE *)pal->colors;
-
-  if (step < 0)
-    step = 0;
-  if (step > 15)
-    step = 15;
-
-  while (--n >= 0) {
-    WORD r = *c++;
-    WORD g = *c++;
-    WORD b = *c++;
-
-    CopInsSet16(ins++, ColorIncreaseContrastRGB(r, g, b, step));
-  }
-}
-
-__regargs void ContrastChange(PaletteT *pal, CopInsT *ins, WORD step) {
-  WORD n = pal->count;
-  UBYTE *c = (UBYTE *)pal->colors;
-
-  if (step >= 0) {
-    if (step > 15)
-      step = 15;
-
-    while (--n >= 0) {
-      WORD r = *c++;
-      WORD g = *c++;
-      WORD b = *c++;
-
-      CopInsSet16(ins++, ColorIncreaseContrastRGB(r, g, b, step));
-    }
-  } else {
-    step = -step;
-    if (step > 15)
-      step = 15;
-
-    while (--n >= 0) {
-      WORD r = *c++;
-      WORD g = *c++;
-      WORD b = *c++;
-
-      CopInsSet16(ins++, ColorDecreaseContrastRGB(r, g, b, step));
-    }
-  }
-}
-
-UBYTE envelope[24] = {
-  0, 0, 1, 1, 2, 3, 5, 8, 11, 13, 14, 15,
-  15, 14, 13, 11, 8, 5, 3, 2, 1, 1, 0, 0 
-};

@@ -62,8 +62,4 @@ static void Kill() {
   DeleteCopList(cp);
 }
 
-static void Render() {
-  LoadEffects(currentTimeSlot, 3);
-}
-
-EFFECT(SushiGirl, Load, UnLoad, Init, Kill, Render, Prepare);
+EFFECT(SushiGirl, Load, UnLoad, Init, Kill, NULL, Prepare);

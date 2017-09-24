@@ -98,8 +98,4 @@ static void Kill() {
   DeleteCopList(cp);
 }
 
-static void Render() {
-  EffectPrepare(&Floor);
-}
-
-EFFECT(Toilet, Load, UnLoad, Init, Kill, Render, Prepare);
+EFFECT(Toilet, Load, UnLoad, Init, Kill, NULL, Prepare);

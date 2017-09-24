@@ -12,7 +12,7 @@
 #include "sushiboyz.h"
 
 STRPTR __cwdpath = "nigiri";
-LONG __chipmem = 460 * 1024;
+LONG __chipmem = 470 * 1024;
 LONG __fastmem = 380 * 1024;
 
 extern BOOL execOnly;
