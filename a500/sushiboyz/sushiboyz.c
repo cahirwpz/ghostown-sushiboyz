@@ -23,6 +23,32 @@ BitmapT *screen0, *screen1;
 TrackT **tracks;
 
 /*****************************************************************************/
+/* List of effects.                                                          */
+/*****************************************************************************/
+
+static EffectT *effects[] = {
+  &Ninja1,
+  &Ninja2,
+  &Ninja3,
+  &Toilet,
+  &Floor,
+  &FlatShade,
+  &RunningMan,
+  &Blurred3D,
+  &GhostownLogo,
+  &Bumpmap,
+  &Credits,
+  &Thunders,
+  &Twister,
+  &Watchmaker,
+  &UVMap,
+  &Filled3D,
+  &SushiGirl,
+  &Glitch,
+  NULL
+};
+
+/*****************************************************************************/
 /* Demo time line.                                                           */
 /*****************************************************************************/
 
@@ -266,6 +292,14 @@ int main() {
   Log("Loading artwork... Please wait...\n");
 
   SerialPrint("FPR %ld\n", (LONG)FRAMES_PER_ROW);
+
+  {
+    EffectT **item;
+    for (item = effects; *item; item++) {
+      EffectT *effect = *item;
+      SerialPrint("E %s\n", effect->name);
+    }
+  }
 
   {
     TimeSlotT *item;
